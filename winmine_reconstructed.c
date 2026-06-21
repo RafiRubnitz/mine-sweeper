@@ -697,7 +697,7 @@ void NewGame(void) {
         int my = RandomInt(g_nBoardHeight) + 1;
 
         if (!(g_board[my][mx] & MINE_FLAG)) {
-            g_board[my][mx] ^= 0x85;  // set mine flag
+            g_board[my][mx] |= 0x8F;  // MINE_FLAG | CELL_UNREVEALED
             nMinesPlaced++;
         }
     }
