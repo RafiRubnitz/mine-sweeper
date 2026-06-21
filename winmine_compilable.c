@@ -512,20 +512,6 @@ static BOOL LoadBitmaps(void)
     // Compute per-frame byte offsets for tiles (16 frames, 16x16 each)
     {
         int nPerTile = DibFrameBytes(g_pbmTiles, CELL_SIZE, CELL_SIZE);
-        WCHAR dbg[128];
-        wsprintfW(dbg, L"DIB TILES: biBitCount=%d biSize=%d biClrUsed=%d stride=%d perTile=%d\r\n",
-            g_pbmTiles->bmiHeader.biBitCount, g_pbmTiles->bmiHeader.biSize,
-            g_pbmTiles->bmiHeader.biClrUsed,
-            DibRowStride(g_pbmTiles, CELL_SIZE), nPerTile);
-        OutputDebugStringW(dbg);
-        // Also write to file for debugging
-        HANDLE hf = CreateFileW(L"debug.log", GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
-        if (hf != INVALID_HANDLE_VALUE) {
-            DWORD written;
-            char buf[128]; WideCharToMultiByte(CP_ACP, 0, dbg, -1, buf, 128, NULL, NULL);
-            WriteFile(hf, buf, (DWORD)strlen(buf), &written, NULL);
-            CloseHandle(hf);
-        }
         for (i = 0; i < 16; i++)
             g_nTileOffsets[i] = i * nPerTile;
     }
@@ -1134,15 +1120,6 @@ static void StartGame(void)
     int x = g_nCurCellX;
     int y = g_nCurCellY;
 
-    // ONE-TIME debug: is StartGame ever reached?
-    static int s_bug = 1;
-    if (s_bug) {
-        WCHAR z[64];
-        wsprintfW(z, L"StartGame: x=%d y=%d", x, y);
-        MessageBoxW(NULL, z, L"DEBUG", MB_OK);
-        s_bug = 0;
-    }
-
     if (x < 1 || y < 1 || x > g_nBoardWidth || y > g_nBoardHeight)
         return;
 
@@ -1703,44 +1680,64 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             break;
 
         // ── WM_LBUTTONDOWN (0x201) ──
-        // Exact match to original: sub_1001BC9 case 0x201
+        // Exact match to original: sub_1001BC9 case 0x201, LABEL_91, fall-through to LABEL_92
         case WM_LBUTTONDOWN:
             if (g_bCancelFlag) {
-                g_bCancelFlag = FALSE;           // LABEL_76
+                g_bCancelFlag = FALSE;
                 return 0;
             }
-            if (FaceButtonClick(lParam))         // sub_100140C
+            if (FaceButtonClick(lParam))
                 return 0;
-            if (!(g_dwGameFlags & GAME_ACTIVE))  // (dword_1005000 & 1) == 0
-                break;                           // DefWindowProc
+            if (!(g_dwGameFlags & GAME_ACTIVE))
+                break;
             // LABEL_91:
-            g_bBothButtons = (wParam & 6) != 0;  // MK_LBUTTON|MK_RBUTTON = 6
+            g_bBothButtons = (wParam & 6) != 0;
             SetCapture(hWnd);
             g_nCurCellX = -1;
             g_nCurCellY = -1;
             g_bMouseDown = TRUE;
-            SetFace(FACE_CLICKED);               // sub_1002913(1)
-            return 0;
+            SetFace(FACE_CLICKED);
+            // Original falls through from switch break to LABEL_92 (MOUSEMOVE handler).
+            // This immediately updates g_nCurCellX/Y from button-down position.
+            goto LBUTTONDOWN_TO_MOUSEMOVE;
 
-        // ── WM_RBUTTONDOWN (0x204) ──
-        case WM_RBUTTONDOWN:
+        // ── WM_MBUTTONDOWN (0x207) ──
+        case WM_MBUTTONDOWN:
             if (g_bCancelFlag) {
-                g_bCancelFlag = FALSE;           // LABEL_76
+                g_bCancelFlag = FALSE;
                 return 0;
             }
             if (!(g_dwGameFlags & GAME_ACTIVE))
                 break;
-            if (g_bMouseDown) {                  // chord: left already down
-                ClickCell(-3, -3);              // sub_10031D4(-3, -3)
-                g_bBothButtons = TRUE;           // dword_1005144 = 1
+            g_bBothButtons = TRUE;
+            // LABEL_91:
+            SetCapture(hWnd);
+            g_nCurCellX = -1;
+            g_nCurCellY = -1;
+            g_bMouseDown = TRUE;
+            SetFace(FACE_CLICKED);
+            // Fall through to MOUSEMOVE handler (same as original)
+            goto LBUTTONDOWN_TO_MOUSEMOVE;
+
+        // ── WM_RBUTTONDOWN (0x204) ──
+        case WM_RBUTTONDOWN:
+            if (g_bCancelFlag) {
+                g_bCancelFlag = FALSE;
+                return 0;
+            }
+            if (!(g_dwGameFlags & GAME_ACTIVE))
+                break;
+            if (g_bMouseDown) {
+                ClickCell(-3, -3);
+                g_bBothButtons = TRUE;
                 PostMessageW(g_hWnd, WM_MOUSEMOVE, wParam, lParam);
                 return 0;
             }
-            if (!(wParam & MK_LBUTTON)) {        // right only (no left)
+            if (!(wParam & MK_LBUTTON)) {
                 if (!g_bMenuLoop) {
                     int cx = ((WORD)lParam + 4) >> 4;
                     int cy = ((int)(short)HIWORD(lParam) - 39) >> 4;
-                    RightClickCell(cx, cy);      // sub_100374F
+                    RightClickCell(cx, cy);
                 }
                 return 0;
             }
@@ -1751,23 +1748,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_nCurCellY = -1;
             g_bMouseDown = TRUE;
             SetFace(FACE_CLICKED);
-            return 0;
+            // Fall through to MOUSEMOVE handler
+            goto LBUTTONDOWN_TO_MOUSEMOVE;
 
-        // ── WM_MBUTTONDOWN (0x207) ──
-        case WM_MBUTTONDOWN:
-            if (g_bCancelFlag) {
-                g_bCancelFlag = FALSE;           // LABEL_76
-                return 0;
+LBUTTONDOWN_TO_MOUSEMOVE:
+            // LABEL_92 fall-through: process button-down lParam as MOUSEMOVE
+            {
+                int cx = ((WORD)lParam + 4) >> 4;
+                int cy = ((int)(short)HIWORD(lParam) - 39) >> 4;
+                if (g_bMouseDown && (g_dwGameFlags & GAME_ACTIVE))
+                    ClickCell(cx, cy);
             }
-            if (!(g_dwGameFlags & GAME_ACTIVE))
-                break;
-            g_bBothButtons = TRUE;               // chord mode
-            // LABEL_91:
-            SetCapture(hWnd);
-            g_nCurCellX = -1;
-            g_nCurCellY = -1;
-            g_bMouseDown = TRUE;
-            SetFace(FACE_CLICKED);
             return 0;
 
         // ── WM_MOUSEMOVE (0x200 = 512) ──
