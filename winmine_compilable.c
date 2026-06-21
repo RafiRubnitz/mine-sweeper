@@ -1158,13 +1158,11 @@ static void NewGame(void)
     KillTimer(g_hWnd, IDT_GAME_TIMER);
 
     // If dimensions changed, resize window
-    if (g_nDiffWidth == g_nBoardWidth && g_nDiffHeight == g_nBoardHeight)
-        SizeWindow(4);   // same size, just invalidate
-    else
-        SizeWindow(6);   // different size: move + invalidate
-
+    // Original: check BEFORE setting new dims, call SizeWindow AFTER setting
+    BYTE sizeFlags = (g_nDiffWidth == g_nBoardWidth && g_nDiffHeight == g_nBoardHeight) ? 4 : 6;
     g_nBoardWidth  = g_nDiffWidth;
     g_nBoardHeight = g_nDiffHeight;
+    SizeWindow(sizeFlags);
 
     ClearBoard();
 
