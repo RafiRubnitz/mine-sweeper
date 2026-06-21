@@ -491,7 +491,7 @@ static BYTE* DibPixelBase(BITMAPINFO *pDib)
 
 static BITMAPINFO* LoadDibResource(int nResId)
 {
-    HRSRC hRsrc = FindResourceW(g_hInst, MAKEINTRESOURCEW(nResId), RT_BITMAP);
+    HRSRC hRsrc = FindResourceW(g_hInst, MAKEINTRESOURCEW(nResId), RT_RCDATA);
     if (!hRsrc) return NULL;
     HGLOBAL hRes = LoadResource(g_hInst, hRsrc);
     if (!hRes) return NULL;
@@ -636,7 +636,7 @@ static void RevealCell(int x, int y)
         return;
 
     BYTE state = *pCell & CELL_STATE_MASK;
-    if (state >= CELL_QUESTION)  // 14, 15, or border (16)
+    if (state == CELL_BORDER || state == CELL_QUESTION)  // 16 or 14
         return;
 
     g_nRevealedCells++;

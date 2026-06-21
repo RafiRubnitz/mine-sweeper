@@ -50,9 +50,9 @@ END
 // ID 420: digits.bmp  13 wide x 276 tall, 4bpp  — 12 digit frames, 13x23 each
 // ID 430: faces.bmp   24 wide x 120 tall, 4bpp  —  6 face frames, 24x20 each
 // ===================================================================
-410                     BITMAP                  "res/tiles.bmp"
-420                     BITMAP                  "res/digits.bmp"
-430                     BITMAP                  "res/faces.bmp"
+410                     RCDATA                 "res/410.dib"
+420                     RCDATA                 "res/420.dib"
+430                     RCDATA                 "res/430.dib"
 
 // ===================================================================
 // WAVE Sound Resources — custom "WAVE" resource type.
