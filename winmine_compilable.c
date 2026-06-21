@@ -1226,11 +1226,11 @@ static void EndGame(BOOL bWon)
         if (g_nMineDisplay > 0)
             UpdateCounter(-g_nMineDisplay);
 
-        // Auto-flag remaining unflagged mines
+        // Auto-flag remaining unflagged mines (original uses state 14 for win-flag)
         for (y = 1; y <= g_nBoardHeight; y++) {
             for (x = 1; x <= g_nBoardWidth; x++) {
                 if ((g_board[y][x] & MINE_FLAG) && !(g_board[y][x] & REVEALED_FLAG)) {
-                    g_board[y][x] = (g_board[y][x] & 0xE0) | CELL_FLAGGED;
+                    g_board[y][x] = (g_board[y][x] & 0xE0) | 14;  // original sub_1002F80(14)
                     g_boardDisplay[y][x] = g_board[y][x];
                 }
             }
