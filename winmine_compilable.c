@@ -1059,8 +1059,14 @@ static void SizeWindow(BYTE flags)
         }
     }
 
-    int nWinWidth  = nClientWidth  + g_nCxEdge * 2;
-    int nWinHeight = nClientHeight + g_nCyEdge * 2 + g_nMenuHeight;
+    // Use AdjustWindowRectEx to compute correct window size from client area.
+    // Works correctly on all Windows versions (unlike old SM_CXBORDER metrics).
+    DWORD dwStyle = (DWORD)GetWindowLongPtrW(g_hWnd, GWL_STYLE);
+    DWORD dwExStyle = (DWORD)GetWindowLongPtrW(g_hWnd, GWL_EXSTYLE);
+    RECT rcWin = {0, 0, nClientWidth, nClientHeight};
+    AdjustWindowRectEx(&rcWin, dwStyle, g_hMenu != NULL, dwExStyle);
+    int nWinWidth  = rcWin.right - rcWin.left;
+    int nWinHeight = rcWin.bottom - rcWin.top;
 
     // Adjust position to keep window on-screen
     int nScreenW = GetSystemMetrics(SM_CXSCREEN);
@@ -1890,15 +1896,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     g_nClientWidth  = g_nBoardWidth * CELL_SIZE + 24;
     g_nClientHeight = g_nBoardHeight * CELL_SIZE + 67;
-    g_nMenuHeight   = g_nBorderTop + g_nCyEdge;
 
-    int nWinWidth  = g_nClientWidth  + g_nCxEdge * 2;
-    int nWinHeight = g_nClientHeight + g_nCyEdge * 2 + g_nMenuHeight;
+    // Use AdjustWindowRectEx for correct window size on any Windows version
+    DWORD dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+    RECT rcWin = {0, 0, g_nClientWidth, g_nClientHeight};
+    AdjustWindowRectEx(&rcWin, dwStyle, TRUE, 0);
+    int nWinWidth  = rcWin.right - rcWin.left;
+    int nWinHeight = rcWin.bottom - rcWin.top;
 
     // Create the window
     g_hWnd = CreateWindowExW(0,
         g_szAppName, g_szAppName,
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        dwStyle,
         g_nWindowX, g_nWindowY,
         nWinWidth, nWinHeight,
         NULL, g_hMenu, hInstance, NULL);
