@@ -512,6 +512,20 @@ static BOOL LoadBitmaps(void)
     // Compute per-frame byte offsets for tiles (16 frames, 16x16 each)
     {
         int nPerTile = DibFrameBytes(g_pbmTiles, CELL_SIZE, CELL_SIZE);
+        WCHAR dbg[128];
+        wsprintfW(dbg, L"DIB TILES: biBitCount=%d biSize=%d biClrUsed=%d stride=%d perTile=%d\r\n",
+            g_pbmTiles->bmiHeader.biBitCount, g_pbmTiles->bmiHeader.biSize,
+            g_pbmTiles->bmiHeader.biClrUsed,
+            DibRowStride(g_pbmTiles, CELL_SIZE), nPerTile);
+        OutputDebugStringW(dbg);
+        // Also write to file for debugging
+        HANDLE hf = CreateFileW(L"debug.log", GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+        if (hf != INVALID_HANDLE_VALUE) {
+            DWORD written;
+            char buf[128]; WideCharToMultiByte(CP_ACP, 0, dbg, -1, buf, 128, NULL, NULL);
+            WriteFile(hf, buf, (DWORD)strlen(buf), &written, NULL);
+            CloseHandle(hf);
+        }
         for (i = 0; i < 16; i++)
             g_nTileOffsets[i] = i * nPerTile;
     }
@@ -1119,6 +1133,15 @@ static void StartGame(void)
 {
     int x = g_nCurCellX;
     int y = g_nCurCellY;
+
+    // ONE-TIME debug: is StartGame ever reached?
+    static int s_bug = 1;
+    if (s_bug) {
+        WCHAR z[64];
+        wsprintfW(z, L"StartGame: x=%d y=%d", x, y);
+        MessageBoxW(NULL, z, L"DEBUG", MB_OK);
+        s_bug = 0;
+    }
 
     if (x < 1 || y < 1 || x > g_nBoardWidth || y > g_nBoardHeight)
         return;
