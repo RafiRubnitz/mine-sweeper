@@ -1,0 +1,189 @@
+// winmine.rc - Windows Resource Script for Minesweeper
+// Reconstructed from reverse engineering WINMINE_1.EXE
+//
+// Build:
+//   rc /nologo /fo winmine.res winmine.rc
+//
+// Requires: res/100_icon.ico
+//           res/tiles.bmp, res/digits.bmp, res/faces.bmp
+//           res/sound_1B0.wav, res/sound_1B1.wav, res/sound_1B2.wav
+//           res/1.manifest
+
+#pragma code_page(65001)
+
+#include <windows.h>
+
+// ===================================================================
+// String Table (IDs 1-16)
+// ===================================================================
+STRINGTABLE
+BEGIN
+    1                       ""
+    2                       "Minesweeper"
+    3                       ""
+    4                       "Minesweeper Error"
+    5                       "Unable to allocate a timer. Please exit some of your applications and try again."
+    6                       "Out of Memory"
+    7                       "Error: %d"
+    8                       "%d seconds"
+    9                       "Anonymous"
+    10                      "You have the fastest time\nfor beginner level.\nPlease enter your name."
+    11                      "You have the fastest time\nfor intermediate level.\nPlease enter your name."
+    12                      "You have the fastest time\nfor expert level.\nPlease enter your name."
+    13                      "Minesweeper"
+    14                      "by Robert Donner and Curt Johnson"
+    15                      ""
+    16                      ""
+END
+
+// ===================================================================
+// Icon (ID 100)
+// ===================================================================
+// 100                  ICON                    "res/100_icon.ico"
+// Icon skipped - original .ico format too old for rc.exe. Use SDKPAINT to convert.
+
+// ===================================================================
+// Bitmaps - loaded via LoadResource/LockResource/SetDIBitsToDevice
+// as raw DIB data (not via LoadBitmap).
+//
+// ID 410: tiles.bmp   16 wide x 256 tall, 4bpp  — 16 tile frames, 16x16 each
+// ID 420: digits.bmp  13 wide x 276 tall, 4bpp  — 12 digit frames, 13x23 each
+// ID 430: faces.bmp   24 wide x 120 tall, 4bpp  —  6 face frames, 24x20 each
+// ===================================================================
+410                     BITMAP                  "res/tiles.bmp"
+420                     BITMAP                  "res/digits.bmp"
+430                     BITMAP                  "res/faces.bmp"
+
+// ===================================================================
+// WAVE Sound Resources — custom "WAVE" resource type.
+// Played via PlaySoundW with the SND_RESOURCE flag.
+//
+// ID 432 (0x1B0): tick sound   (click / flag toggle)
+// ID 433 (0x1B1): reveal sound (tile reveal / explosion)
+// ID 434 (0x1B2): win  sound   (game won fanfare)
+// ===================================================================
+432                     WAVE                    "res/sound_1B0.wav"
+433                     WAVE                    "res/sound_1B1.wav"
+434                     WAVE                    "res/sound_1B2.wav"
+
+// ===================================================================
+// Menu (ID 500)
+// ===================================================================
+500 MENU
+BEGIN
+    POPUP "&Game"
+    BEGIN
+        MENUITEM "&New\tF2",                    510
+        MENUITEM SEPARATOR
+        MENUITEM "&Beginner",                   521
+        MENUITEM "&Intermediate",               522
+        MENUITEM "&Expert",                     523
+        MENUITEM "&Custom...",                  524
+        MENUITEM SEPARATOR
+        MENUITEM "&Marks",                      525
+        MENUITEM "&Color",                      527
+        MENUITEM "&Sound",                      526
+        MENUITEM SEPARATOR
+        MENUITEM "&Best Times...",              528
+        MENUITEM "E&xit",                       529
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&Contents\tF1",               590
+        MENUITEM "&Search for Help...",         591
+        MENUITEM "&How to Play",                592
+        MENUITEM SEPARATOR
+        MENUITEM "&About Minesweeper",          593
+    END
+END
+
+// ===================================================================
+// Accelerators (ID 501)
+// ===================================================================
+501 ACCELERATORS
+BEGIN
+    VK_F1,              590,                    VIRTKEY
+    VK_F2,              510,                    VIRTKEY
+END
+
+// ===================================================================
+// Dialog ID 80 (0x50) — Custom Field
+//
+// Controls: 141 (height), 142 (width), 143 (mines), IDOK, IDCANCEL
+// ===================================================================
+80 DIALOGEX 0, 0, 130, 85
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_SETFONT
+CAPTION "Custom Field"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    LTEXT           "&Height:",             -1,        7,  7,  30, 8
+    EDITTEXT        141,                    40,        5,  32, 12, ES_LEFT | ES_NUMBER | WS_BORDER | WS_TABSTOP
+    LTEXT           "&Width:",              -1,        7,  22, 30, 8
+    EDITTEXT        142,                    40,        20, 32, 12, ES_LEFT | ES_NUMBER | WS_BORDER | WS_TABSTOP
+    LTEXT           "&Mines:",              -1,        7,  37, 30, 8
+    EDITTEXT        143,                    40,        35, 32, 12, ES_LEFT | ES_NUMBER | WS_BORDER | WS_TABSTOP
+    DEFPUSHBUTTON   "OK",                   IDOK,      10, 55, 50, 14
+    PUSHBUTTON      "Cancel",               IDCANCEL,  70, 55, 50, 14
+END
+
+// ===================================================================
+// Dialog ID 90 (0x5A) — Best Times
+//
+// Displays fastest times and player names for each difficulty level.
+// Labels: "Fastest Times" centered at top.
+// Three rows: Beginner / Intermediate / Expert, each with time + name.
+// ===================================================================
+90 DIALOGEX 0, 0, 172, 100
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_SETFONT | DS_CENTER
+CAPTION "Best Times"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    CTEXT           "Fastest Times",                -1,     0,  8,  172, 10
+    LTEXT           "Beginner:",                     -1,     10, 27, 45, 8
+    LTEXT           "",                              101,    60, 27, 50, 8
+    LTEXT           "",                              102,    115,27, 50, 8
+    LTEXT           "Intermediate:",                 -1,     10, 40, 45, 8
+    LTEXT           "",                              103,    60, 40, 50, 8
+    LTEXT           "",                              104,    115,40, 50, 8
+    LTEXT           "Expert:",                       -1,     10, 53, 45, 8
+    LTEXT           "",                              105,    60, 53, 50, 8
+    LTEXT           "",                              106,    115,53, 50, 8
+    DEFPUSHBUTTON   "OK",                           IDOK,   61, 75, 50, 14
+END
+
+// ===================================================================
+// Version Info
+// ===================================================================
+1 VERSIONINFO
+FILEVERSION     1,0,0,1
+PRODUCTVERSION  1,0,0,1
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",        "Microsoft Corporation"
+            VALUE "FileDescription",    "Minesweeper"
+            VALUE "FileVersion",        "1.0.0.1"
+            VALUE "InternalName",       "WINMINE"
+            VALUE "LegalCopyright",     "Copyright (c) Microsoft Corporation"
+            VALUE "OriginalFilename",   "WINMINE.EXE"
+            VALUE "ProductName",        "Microsoft Minesweeper"
+            VALUE "ProductVersion",     "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation",            0x0409, 0x04B0
+    END
+END
+
+// ===================================================================
+// Manifest (RT_MANIFEST) — enables themed common controls on XP+
+// ===================================================================
+1                       24                      "res/1.manifest"

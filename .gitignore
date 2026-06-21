@@ -1,0 +1,18 @@
+# IDA database files
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+*.i64
+
+# Build artifacts
+*.obj
+*.res
+*.exe
+!WINMINE_1.EXE
+winmine_rebuilt.exe
+
+# IDE
+.vs/
+*.user

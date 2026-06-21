@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_ida-pro_idalib__idb_open",
+      "mcp__plugin_ida-pro_idalib__survey_binary",
+      "mcp__plugin_ida-pro_idalib__list_funcs",
+      "mcp__plugin_ida-pro_idalib__entity_query",
+      "mcp__plugin_ida-pro_idalib__callgraph",
+      "mcp__plugin_ida-pro_idalib__list_globals",
+      "mcp__plugin_ida-pro_idalib__get_bytes",
+      "mcp__plugin_ida-pro_idalib__decompile",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
