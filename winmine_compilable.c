@@ -808,40 +808,45 @@ static void ChordClick(int x, int y)
         EndGame(TRUE);
 }
 
+// ============================================================================
+// ClickNumberedCell — exact match to original sub_1003512
+// Called by StartGame when clicking on an unrevealed, non-question-mark cell.
+// ============================================================================
 static void ClickNumberedCell(int x, int y)
 {
-    BYTE *pCell = &g_board[y][x];
+    BYTE *pCell = &g_board[y][x];               // byte_1005340[32*y + x]
 
-    if (!(*pCell & MINE_FLAG)) {
-        RevealCells(x, y);
-        if (g_nRevealedCells == g_nSafeCells)
-            EndGame(TRUE);
+    if (!(*pCell & MINE_FLAG)) {                 // cell does NOT contain mine
+        RevealCells(x, y);                       // sub_1003084
+        if (g_nRevealedCells == g_nSafeCells)    // dword_10057A4 == dword_10057A0
+            EndGame(TRUE);                       // sub_100347C(1)
         return;
     }
 
-    // Hit a mine
-    if (g_nRevealedCells > 0) {
-        // Not first click: game over
-        SetCellState(x, y, CELL_MINE_HIT);
-        g_board[y][x] |= REVEALED_FLAG;
-        g_boardDisplay[y][x] = g_board[y][x];
-        DrawCell(x, y);
-        EndGame(FALSE);
-    } else {
-        // First click: move the mine to a safe cell
-        int ny, nx;
-        *pCell &= ~MINE_FLAG;  // remove mine from clicked cell
-        for (ny = 1; ny <= g_nBoardHeight; ny++) {
-            for (nx = 1; nx <= g_nBoardWidth; nx++) {
-                if (!(g_board[ny][nx] & MINE_FLAG) && !(nx == x && ny == y)) {
-                    g_board[ny][nx] |= MINE_FLAG;
-                    RevealCells(x, y);
-                    return;
-                }
-            }
-        }
-        RevealCells(x, y);  // fallback
+    // Cell contains a mine
+    if (g_nRevealedCells > 0) {                  // game already in progress
+        // Hit mine after first click → GAME OVER
+        SetCellState(x, y, CELL_MINE_HIT);       // sub_1002EAB(x, y, 76) → 76 = 'L'? actually 12|0x40
+        EndGame(FALSE);                          // sub_100347C(0)
+        return;
     }
+
+    // First click hit a mine → relocate it to another cell
+    int ny, nx;
+    for (ny = 1; ny <= g_nBoardHeight; ny++) {
+        BYTE *pRow = &g_board[ny][0];
+        for (nx = 1; nx <= g_nBoardWidth; nx++) {
+            if (pRow[nx] & MINE_FLAG)           // already has mine
+                continue;
+            // Found a free cell — move mine here
+            *pCell &= ~MINE_FLAG;                // remove mine from clicked cell
+            pRow[nx] |= MINE_FLAG;               // place mine in new cell
+            RevealCells(x, y);                   // reveal the now-safe clicked cell
+            return;
+        }
+    }
+    // Should never reach here unless board is all mines
+    RevealCells(x, y);
 }
 
 // ============================================================================
@@ -1106,41 +1111,45 @@ static void PlayGameSound(int nSoundId)
         SND_RESOURCE | SND_ASYNC | SND_NODEFAULT);
 }
 
+// ============================================================================
+// StartGame — exact match to original sub_10037E1
+// Called on mouse-up if game is active. Reads g_nCurCellX/Y set during MOUSEMOVE.
+// ============================================================================
 static void StartGame(void)
 {
     int x = g_nCurCellX;
     int y = g_nCurCellY;
 
-    if (x < 1 || y < 1 || x > g_nBoardWidth || y > g_nBoardHeight) {
-        g_nCurCellX = -2;
-        g_nCurCellY = -2;
+    if (x < 1 || y < 1 || x > g_nBoardWidth || y > g_nBoardHeight)
         return;
-    }
 
-    // Start timer on first click
+    // First click: start timer + play tick sound
     if (g_nRevealedCells == 0 && g_nTimer == 0) {
-        PlayGameSound(SOUND_TICK);
-        g_nTimer = 1;
-        g_bTimerRunning = TRUE;
-        SetTimer(g_hWnd, IDT_GAME_TIMER, 1000, NULL);
+        PlayGameSound(SOUND_TICK);               // sub_10038ED(1)
+        g_nTimer = 1;                            // ++dword_100579C
+        // sub_10028B5() — redraw timer display
+        HDC hdc = GetDC(g_hWnd);
+        DrawTimer(hdc);
+        ReleaseDC(g_hWnd, hdc);
+        g_bTimerRunning = TRUE;                  // dword_1005164 = 1
+        if (!SetTimer(g_hWnd, IDT_GAME_TIMER, 1000, NULL))
+            ShowError(IDS_ERRORTIMER);           // sub_1003950(4)
     }
 
+    // If game no longer active, bail
     if (!(g_dwGameFlags & GAME_ACTIVE)) {
         g_nCurCellX = -2;
         g_nCurCellY = -2;
-        return;
-    }
-
-    if (g_bBothButtons) {
-        ChordClick(x, y);
+        // fall through to SetFace
+    } else if (g_bBothButtons) {
+        ChordClick(x, y);                        // sub_10035B7
     } else {
-        BYTE cell = g_board[y][x];
+        BYTE cell = g_board[y][x];              // byte_1005340[32*y + x]
         if (!(cell & REVEALED_FLAG) && (cell & CELL_STATE_MASK) != CELL_QUESTION)
-            ClickNumberedCell(x, y);
+            ClickNumberedCell(x, y);             // sub_1003512
     }
 
-    if (g_dwGameFlags & GAME_ACTIVE)
-        SetFace(g_nFaceState);
+    SetFace(g_nFaceState);                       // sub_1002913(dword_1005160)
 }
 
 static void NewGame(void)
@@ -1670,117 +1679,122 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             break;
 
+        // ── WM_LBUTTONDOWN (0x201) ──
+        // Exact match to original: sub_1001BC9 case 0x201
         case WM_LBUTTONDOWN:
             if (g_bCancelFlag) {
-                g_bCancelFlag = FALSE;
+                g_bCancelFlag = FALSE;           // LABEL_76
                 return 0;
             }
-            if (FaceButtonClick(lParam))
+            if (FaceButtonClick(lParam))         // sub_100140C
                 return 0;
-            if (!(g_dwGameFlags & GAME_ACTIVE))
-                break;
-
-            g_bBothButtons = FALSE;
+            if (!(g_dwGameFlags & GAME_ACTIVE))  // (dword_1005000 & 1) == 0
+                break;                           // DefWindowProc
+            // LABEL_91:
+            g_bBothButtons = (wParam & 6) != 0;  // MK_LBUTTON|MK_RBUTTON = 6
             SetCapture(hWnd);
             g_nCurCellX = -1;
             g_nCurCellY = -1;
             g_bMouseDown = TRUE;
-            g_nFaceState = FACE_SURPRISED;
-            SetFace(FACE_SURPRISED);
+            SetFace(FACE_CLICKED);               // sub_1002913(1)
             return 0;
 
+        // ── WM_RBUTTONDOWN (0x204) ──
         case WM_RBUTTONDOWN:
             if (g_bCancelFlag) {
-                g_bCancelFlag = FALSE;
+                g_bCancelFlag = FALSE;           // LABEL_76
                 return 0;
             }
             if (!(g_dwGameFlags & GAME_ACTIVE))
                 break;
-
-            // Left+Right = chord
-            if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
-                g_bBothButtons = TRUE;
-                SetCapture(hWnd);
-                g_nCurCellX = -1;
-                g_nCurCellY = -1;
-                g_bMouseDown = TRUE;
-                g_nFaceState = FACE_SURPRISED;
-                SetFace(FACE_SURPRISED);
-                PostMessageW(hWnd, WM_MOUSEMOVE, wParam, lParam);
+            if (g_bMouseDown) {                  // chord: left already down
+                ClickCell(-3, -3);              // sub_10031D4(-3, -3)
+                g_bBothButtons = TRUE;           // dword_1005144 = 1
+                PostMessageW(g_hWnd, WM_MOUSEMOVE, wParam, lParam);
                 return 0;
             }
-
-            g_bBothButtons = FALSE;
-            if (!g_bMenuLoop) {
-                int cx = (GET_X_LPARAM(lParam) + 4) / CELL_SIZE;
-                int cy = (GET_Y_LPARAM(lParam) - 55) / CELL_SIZE + 1;
-                RightClickCell(cx, cy);
-            }
-            return 0;
-
-        case WM_MBUTTONDOWN:
-            if (g_bCancelFlag) {
-                g_bCancelFlag = FALSE;
+            if (!(wParam & MK_LBUTTON)) {        // right only (no left)
+                if (!g_bMenuLoop) {
+                    int cx = ((WORD)lParam + 4) >> 4;
+                    int cy = ((int)(short)HIWORD(lParam) - 39) >> 4;
+                    RightClickCell(cx, cy);      // sub_100374F
+                }
                 return 0;
             }
-            if (!(g_dwGameFlags & GAME_ACTIVE))
-                break;
-
+            // Left also down: treat as chord
             g_bBothButtons = TRUE;
             SetCapture(hWnd);
             g_nCurCellX = -1;
             g_nCurCellY = -1;
             g_bMouseDown = TRUE;
-            g_nFaceState = FACE_SURPRISED;
-            SetFace(FACE_SURPRISED);
+            SetFace(FACE_CLICKED);
             return 0;
 
+        // ── WM_MBUTTONDOWN (0x207) ──
+        case WM_MBUTTONDOWN:
+            if (g_bCancelFlag) {
+                g_bCancelFlag = FALSE;           // LABEL_76
+                return 0;
+            }
+            if (!(g_dwGameFlags & GAME_ACTIVE))
+                break;
+            g_bBothButtons = TRUE;               // chord mode
+            // LABEL_91:
+            SetCapture(hWnd);
+            g_nCurCellX = -1;
+            g_nCurCellY = -1;
+            g_bMouseDown = TRUE;
+            SetFace(FACE_CLICKED);
+            return 0;
+
+        // ── WM_MOUSEMOVE (0x200 = 512) ──
+        // Exact match to original: LABEL_92
         case WM_MOUSEMOVE:
         {
-            int cx = (GET_X_LPARAM(lParam) + 4) / CELL_SIZE;
-            int cy = (GET_Y_LPARAM(lParam) - 55) / CELL_SIZE + 1;
-
-            if (g_bMouseDown) {
-                if (g_dwGameFlags & GAME_ACTIVE)
-                    ClickCell(cx, cy);
-                else {
+            if (g_bMouseDown) {                  // dword_1005140
+                if (g_dwGameFlags & GAME_ACTIVE) {
+                    int cx = ((WORD)lParam + 4) >> 4;
+                    int cy = ((int)(short)HIWORD(lParam) - 39) >> 4;
+                    ClickCell(cx, cy);           // sub_10031D4
+                } else {
+                    // LABEL_84
                     g_bMouseDown = FALSE;
                     ReleaseCapture();
-                    ClickCell(-2, -2);
+                    if (g_dwGameFlags & GAME_ACTIVE)
+                        StartGame();             // sub_10037E1
+                    else
+                        ClickCell(-2, -2);       // sub_10031D4(-2, -2)
                 }
             }
-
-            // xyzzy cheat: pixel at desktop (0,0) shows mine under cursor
-            if (g_nCheatState == 5 && !g_bMenuLoop) {
-                if (cx >= 1 && cy >= 1 &&
-                    cx <= g_nBoardWidth && cy <= g_nBoardHeight) {
-                    HDC hdcScreen = GetDC(NULL);
-                    if (hdcScreen) {
-                        BYTE cell = g_board[cy][cx];
-                        COLORREF color = (cell & MINE_FLAG)
-                            ? RGB(0, 0, 0)
-                            : RGB(255, 255, 255);
-                        SetPixelV(hdcScreen, 0, 0, color);
-                        ReleaseDC(NULL, hdcScreen);
+            // xyzzy cheat pixel
+            if (g_nCheatState >= 5 && g_nCheatState != 5) {
+                if (!g_bMenuLoop) {
+                    int cx = ((WORD)lParam + 4) >> 4;
+                    int cy = ((int)(short)HIWORD(lParam) - 39) >> 4;
+                    if (cx > 0 && cy > 0 && cx <= g_nBoardWidth && cy <= g_nBoardHeight) {
+                        HDC hdc = GetDC(NULL);
+                        SetPixel(hdc, 0, 0, (g_board[cy][cx] & MINE_FLAG) ? 0 : 0xFFFFFF);
+                        ReleaseDC(NULL, hdc);
                     }
                 }
             }
-            return 0;
+            break;                               // DefWindowProc
         }
 
+        // ── WM_LBUTTONUP (0x202) / WM_RBUTTONUP (0x205) / WM_MBUTTONUP (0x208) ──
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
             if (g_bMouseDown) {
+                // LABEL_84
                 g_bMouseDown = FALSE;
                 ReleaseCapture();
                 if (g_dwGameFlags & GAME_ACTIVE)
-                    StartGame();
+                    StartGame();                 // sub_10037E1
                 else
-                    ClickCell(-2, -2);
+                    ClickCell(-2, -2);           // sub_10031D4(-2, -2)
             }
-            g_bBothButtons = FALSE;
-            return 0;
+            return DefWindowProcW(hWnd, msg, wParam, lParam);
 
         case WM_ENTERMENULOOP:
             g_bMenuLoop = TRUE;
