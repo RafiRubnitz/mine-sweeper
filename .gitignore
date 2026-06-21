@@ -13,6 +13,10 @@
 !WINMINE_1.EXE
 winmine_rebuilt.exe
 
+# Reverse engineering notes (keep on disk, not in repo)
+reverse_understanding.md
+*reverse_understanding*.md
+
 # IDE
 .vs/
 *.user
